@@ -1,18 +1,10 @@
-/*
- * Created by SharpDevelop.
- * User: Vitor
- * Date: 13/07/2024
- * Time: 08:01
- * 
- * To change this template use Tools | Options | Coding | Edit Standard Headers.
- */
 using System;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI.Selection;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text; // Adicionado para StringBuilder
+using System.Text;
 
 namespace KONSTRUEDU
 {
@@ -43,10 +35,39 @@ namespace KONSTRUEDU
             UIDocument uidoc = this.ActiveUIDocument;
             Document doc = uidoc.Document;
             StringBuilder stb = new StringBuilder();
-
+            
+            // 1) crear filtro
             FiltroDeParedes miFiltro = new FiltroDeParedes();
+            
+            // 2) obtener pared
+            List<Reference> lista = uidoc.Selection.PickObjects(ObjectType.Element, miFiltro, "selecione a parede").ToList();
+        }
 
-            List<Reference> lista = uidoc.Selection.PickObjects(ObjectType.Element, miFiltro, "selecione a viga").ToList();
+        public void Ejercicio_de_clase_4_10()
+        {
+            UIDocument uidoc = this.ActiveUIDocument;
+            Document doc = uidoc.Document;
+            StringBuilder stb = new StringBuilder();
+            
+            // 1) crear filtro
+            FiltroDeParedes miFiltro = new FiltroDeParedes();
+            
+            // 2) obtener pared
+            Reference PAREDEreferencia = uidoc.Selection.PickObject(ObjectType.Element, miFiltro, "selecione a parede");
+            Element parede = doc.GetElement(PAREDEreferencia);
+            
+            // 3) encontrar elementos en contacto con la viga
+            BoundingBoxXYZ bb = parede.get_BoundingBox(null);
+            
+            Outline outLine = new Outline(bb.Min, bb.Max);
+            
+            BoundingBoxIntersectsFilter bbFilter = new BoundingBoxIntersectsFilter(outLine);
+            
+            List<Element> elementosCercanosALaPared = new FilteredElementCollector(doc).WherePasses(bbFilter).ToElements().ToList();
+            foreach (Element elm in elementosCercanosALaPared) {
+                stb.AppendLine(elm.Name);
+            }
+            TaskDialog.Show("Alerta", stb.ToString());
         }
     }
 
@@ -54,7 +75,8 @@ namespace KONSTRUEDU
     {
         public bool AllowElement(Element element)
         {
-            if (element.Category.Name == "Paredes")
+            // Verifica se o elemento pertence à categoria "Paredes"
+            if (element.Category != null && element.Category.Name == "Paredes")
             {
                 return true;
             }
@@ -63,13 +85,8 @@ namespace KONSTRUEDU
 
         public bool AllowReference(Reference refer, XYZ point)
         {
+            // Não permite referências, apenas elementos
             return false;
         }
-
-        // Método AllowReference sem parâmetros deve ser removido
-        // public bool AllowReference()
-        // {
-        //     return false;
-        // }
     }
 }
