@@ -1,0 +1,130 @@
+using System;
+using Autodesk.Revit.UI;
+using Autodesk.Revit.DB;
+using Autodesk.Revit.UI.Selection;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace KONSTRUEDU
+{
+    [Autodesk.Revit.Attributes.Transaction(Autodesk.Revit.Attributes.TransactionMode.Manual)]
+    [Autodesk.Revit.DB.Macros.AddInId("8C202750-83FC-479F-BDBA-436B89A94A40")]
+    public partial class ThisApplication
+    {
+        private void Module_Startup(object sender, EventArgs e)
+        {
+
+        }
+
+        private void Module_Shutdown(object sender, EventArgs e)
+        {
+
+        }
+
+        #region Revit Macros generated code
+        private void InternalStartup()
+        {
+            this.Startup += new System.EventHandler(Module_Startup);
+            this.Shutdown += new System.EventHandler(Module_Shutdown);
+        }
+        #endregion
+
+        public void Ejercicio_de_clase_4_9()
+        {
+            UIDocument uidoc = this.ActiveUIDocument;
+            Document doc = uidoc.Document;
+            StringBuilder stb = new StringBuilder();
+            
+            // 1) criar filtro
+            FiltroDeParedes miFiltro = new FiltroDeParedes();
+            
+            // 2) obter parede
+            List<Reference> lista = uidoc.Selection.PickObjects(ObjectType.Element, miFiltro, "selecione a parede").ToList();
+        }
+
+        public void Ejercicio_de_clase_4_10()
+        {
+            UIDocument uidoc = this.ActiveUIDocument;
+            Document doc = uidoc.Document;
+            StringBuilder stb = new StringBuilder();
+            
+            // 1) criar filtro
+            FiltroDeParedes miFiltro = new FiltroDeParedes();
+            
+            // 2) obter parede
+            Reference PAREDEreferencia = uidoc.Selection.PickObject(ObjectType.Element, miFiltro, "selecione a parede");
+            Element parede = doc.GetElement(PAREDEreferencia);
+            
+            // 3) encontrar elementos em contato com a viga
+            BoundingBoxXYZ bb = parede.get_BoundingBox(null);
+            
+            Outline outLine = new Outline(bb.Min, bb.Max);
+            
+            BoundingBoxIntersectsFilter bbFilter = new BoundingBoxIntersectsFilter(outLine);
+            
+            List<Element> elementosCercanosALaPared = new FilteredElementCollector(doc).WherePasses(bbFilter).ToElements().ToList();
+           
+            Transaction tr = new Transaction(doc, "eliminacion de elementos");
+            tr.Start(); // a transação começa aqui
+            foreach (Element elm in elementosCercanosALaPared) 
+            {
+                try 
+                {
+                    doc.Delete(elm.Id);
+                } 
+                catch (Exception) 
+                {
+                    stb.AppendLine(elm.Name);
+                }
+            }
+            
+            tr.Commit();
+
+            if (stb.Length > 0) 
+            {
+                TaskDialog TD = new TaskDialog("Notificação");
+                TD.MainIcon = TaskDialogIcon.TaskDialogIconInformation;
+                TD.MainContent = "Os seguintes elementos não foram possíveis de eliminar:\n" + stb.ToString();
+                TD.Show();
+            }
+        }
+        
+        public void CreacionDeMuros() {
+            UIDocument uidoc = this.ActiveUIDocument;
+            Document doc = uidoc.Document;
+            StringBuilder stb = new StringBuilder();
+            
+            Transaction tr = new Transaction(doc, "Creacion de muros"); // a tr é uma variável
+            tr.Start(); // começo da transação
+            
+            Line ln = Line.CreateBound(new XYZ(0,0,0), new XYZ(3,3,0));
+            Level level = new FilteredElementCollector(doc).OfClass(typeof(Level)).FirstOrDefault() as Level;
+            if (level != null)
+            {
+                Wall wall = Wall.Create(doc, ln, level.Id, true);
+            }
+            	
+            tr.Commit(); // final da transação
+        }
+    }
+
+    public class FiltroDeParedes : ISelectionFilter
+    {
+        public bool AllowElement(Element element)
+        {
+            // Verifica se o elemento pertence à categoria "Paredes"
+            if (element.Category != null && element.Category.Name == "Paredes")
+            {
+                return true;
+            }
+            return false;
+        }
+
+        public bool AllowReference(Reference refer, XYZ point)
+        {
+            // Não permite referências, apenas elementos
+            return false;
+        }
+    }
+}
